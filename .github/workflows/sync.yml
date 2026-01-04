@@ -20,11 +20,11 @@ jobs:
           git config --global user.name "mumerdevops"
 
           # 2. Clone the backup repo
-          git clone "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/backup-project.git" backup-dir
+          git clone "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/backup-node-mysql-app" backup-dir
           cd backup-dir
 
           # 3. Add the main project as source
-          git remote add source-repo "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/main-project.git"
+          git remote add source-repo "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/node-mysql-app"
           git fetch source-repo
 
           # 4. THE FIX: Force the backup branch to match source-repo/main exactly
