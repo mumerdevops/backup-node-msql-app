@@ -20,7 +20,7 @@ jobs:
           git config --global user.name "mumerdevops"
 
           # 2. Clone the backup repo
-          git clone "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/backup-node-mysql-app" backup-dir
+          git clone "https://x-access-token:${{ secrets.PAT }}@github.com/mumerdevops/backup-node-msql-app" backup-dir
           cd backup-dir
 
           # 3. Add the main project as source
