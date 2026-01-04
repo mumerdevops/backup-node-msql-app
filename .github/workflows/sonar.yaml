@@ -1,43 +1,21 @@
-name: SonarQube Analysis
-
-on:
-  push:
-    branches: [ "main" ]
-
-jobs:
-  sonarqube:
-    runs-on: self-hosted
-    steps:
+steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v2.0.2 # Use a versioned tag for stability
+      # This replaces the Docker-based action with a binary setup
+      - name: Setup SonarQube Scanner
+        uses: warchant/setup-sonar-scanner@v7
+
+      - name: Run SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Ensure this secret is "http://your-ip:9000"
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} 
-        with:
-          args: >
-            -Dsonar.projectKey=node-mysql-app
-            -Dsonar.projectName=node-mysql-app
-            -Dsonar.sources=.
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-
-      - name: Wait for Analysis
-        run: sleep 10
-
-      - name: Download Report from API
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # We use -L to follow redirects and -sS to show errors
-          curl -sS -L -u "${{ secrets.SONAR_TOKEN }}:" \
-          "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=node-mysql-app" \
-          -o sonar-report.json
-
-      - name: Save Report as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sonarqube-analysis-report
-          path: sonar-report.json
+          sonar-scanner \
+            -Dsonar.projectKey=node-mysql-app \
+            -Dsonar.projectName=node-mysql-app \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN
