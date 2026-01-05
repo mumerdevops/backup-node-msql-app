@@ -13,30 +13,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: SonarQube Scan
-        # Using a stable version tag (v3) instead of master
-        uses: sonarsource/sonarqube-scan-action@v3
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} 
-        with:
-          args: >
-            -Dsonar.projectKey=node-mysql-app
-            -Dsonar.projectName=node-mysql-app
-            -Dsonar.sources=.
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-
-      # The Quality Gate check is better than a simple 'sleep'
-      - name: SonarQube Quality Gate Check
-        id: sonarqube-quality-gate
-        uses: sonarsource/sonarqube-quality-gate-action@v1
-        timeout-minutes: 5
+      # This replaces the "uses: sonarsource/sonarqube-scan-action" step
+      - name: Install and Run SonarScanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          # 1. Download the scanner
+          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+          unzip -o sonar-scanner.zip
+          
+          # 2. Run the scanner using the downloaded binary
+          ./sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+            -Dsonar.projectKey=node-mysql-app \
+            -Dsonar.projectName=node-mysql-app \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
       - name: Download Report from API
         run: |
+          # Wait a few seconds for the background task to process on the server
+          sleep 5
           curl -sS -L -u "${{ secrets.SONAR_TOKEN }}:" \
           "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=node-mysql-app" \
           -o sonar-report.json
