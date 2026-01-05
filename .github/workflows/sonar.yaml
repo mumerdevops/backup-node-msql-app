@@ -11,29 +11,28 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0 # Required for Sonar to see git history/blame
 
       - name: Environment Pre-check
         run: |
-          echo "Checking for Java..."
-          java -version || (echo "ERROR: Java 17+ is required. Install it with: sudo apt install openjdk-17-jre" && exit 1)
-          echo "Checking for Unzip..."
-          unzip -v || (echo "ERROR: unzip is required. Install it with: sudo apt install unzip" && exit 1)
+          echo "Checking dependencies..."
+          java -version || (echo "Java 17+ is missing" && exit 1)
+          unzip -v || (echo "unzip is missing" && exit 1)
 
-      - name: Install and Run SonarScanner
+      - name: Install and Run SonarScanner CLI
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # 1. Download the scanner CLI if not already present
-          if [ ! -d "sonar-scanner-5.0.1.3006-linux" ]; then
+          # 1. Download Scanner if not present (prevents re-downloading every time)
+          if [ ! -d "sonar-scanner-cli" ]; then
             curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
             unzip -o sonar-scanner.zip
+            mv sonar-scanner-5.0.1.3006-linux sonar-scanner-cli
           fi
           
-          # 2. Run the scanner
-          # Note: We use -Dsonar.token instead of -Dsonar.login (modern standard)
-          ./sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
+          # 2. Execute Scan
+          ./sonar-scanner-cli/bin/sonar-scanner \
             -Dsonar.projectKey=node-mysql-app \
             -Dsonar.projectName=node-mysql-app \
             -Dsonar.sources=. \
@@ -42,17 +41,17 @@ jobs:
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
             -Dsonar.qualitygate.wait=true
 
-      - name: Download Report from API
+      - name: Download Quality Gate Result
         if: success()
         run: |
-          # The API requires the token for authentication
+          # Fetch the final status from the API to save as an artifact
           curl -sS -L -u "${{ secrets.SONAR_TOKEN }}:" \
           "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=node-mysql-app" \
           -o sonar-report.json
 
-      - name: Save Report as Artifact
+      - name: Upload Report Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sonarqube-analysis-report
+          name: sonarqube-report
           path: sonar-report.json
