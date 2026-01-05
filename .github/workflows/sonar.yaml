@@ -14,10 +14,10 @@ jobs:
           fetch-depth: 0
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@master # Use a versioned tag for stability
+        # Using a stable version tag (v3) instead of master
+        uses: sonarsource/sonarqube-scan-action@v3
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          # Ensure this secret is "http://your-ip:9000"
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} 
         with:
           args: >
@@ -26,12 +26,17 @@ jobs:
             -Dsonar.sources=.
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
 
-      - name: Wait for Analysis
-        run: sleep 10
+      # The Quality Gate check is better than a simple 'sleep'
+      - name: SonarQube Quality Gate Check
+        id: sonarqube-quality-gate
+        uses: sonarsource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       - name: Download Report from API
         run: |
-          # We use -L to follow redirects and -sS to show errors
           curl -sS -L -u "${{ secrets.SONAR_TOKEN }}:" \
           "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=node-mysql-app" \
           -o sonar-report.json
