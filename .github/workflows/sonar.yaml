@@ -14,7 +14,7 @@ jobs:
           fetch-depth: 0
 
       - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v2.0.2 # Use a versioned tag for stability
+        uses: sonarsource/sonarqube-scan-action@master # Use a versioned tag for stability
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           # Ensure this secret is "http://your-ip:9000"
