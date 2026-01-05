@@ -13,34 +13,45 @@ jobs:
         with:
           fetch-depth: 0
 
-      # This replaces the "uses: sonarsource/sonarqube-scan-action" step
+      - name: Environment Pre-check
+        run: |
+          echo "Checking for Java..."
+          java -version || (echo "ERROR: Java 17+ is required. Install it with: sudo apt install openjdk-17-jre" && exit 1)
+          echo "Checking for Unzip..."
+          unzip -v || (echo "ERROR: unzip is required. Install it with: sudo apt install unzip" && exit 1)
+
       - name: Install and Run SonarScanner
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          # 1. Download the scanner
-          curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
-          unzip -o sonar-scanner.zip
+          # 1. Download the scanner CLI if not already present
+          if [ ! -d "sonar-scanner-5.0.1.3006-linux" ]; then
+            curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+            unzip -o sonar-scanner.zip
+          fi
           
-          # 2. Run the scanner using the downloaded binary
+          # 2. Run the scanner
+          # Note: We use -Dsonar.token instead of -Dsonar.login (modern standard)
           ./sonar-scanner-5.0.1.3006-linux/bin/sonar-scanner \
             -Dsonar.projectKey=node-mysql-app \
             -Dsonar.projectName=node-mysql-app \
             -Dsonar.sources=. \
-            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.host.url="${{ secrets.SONAR_HOST_URL }}" \
+            -Dsonar.token="${{ secrets.SONAR_TOKEN }}" \
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+            -Dsonar.qualitygate.wait=true
 
       - name: Download Report from API
+        if: success()
         run: |
-          # Wait a few seconds for the background task to process on the server
-          sleep 5
+          # The API requires the token for authentication
           curl -sS -L -u "${{ secrets.SONAR_TOKEN }}:" \
           "${{ secrets.SONAR_HOST_URL }}/api/qualitygates/project_status?projectKey=node-mysql-app" \
           -o sonar-report.json
 
       - name: Save Report as Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: sonarqube-analysis-report
